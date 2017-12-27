@@ -31,7 +31,10 @@ mongoose.connect("mongodb://localhost/yelp_camp");
 app.use(bodyparser.urlencoded({extended: true}));
 app.set("view engine", "ejs");
 app.use(express.static(__dirname + "/public"));
-
+app.use(function(req, res, next){
+    res.locals.currentUser = req.user;
+    next();
+});
 
 app.get("/", function(req, res){
     res.render("landing");
@@ -42,7 +45,7 @@ app.get("/campgrounds", function(req, res){
         if(err){
             console.log("Somethings wrong");
         } else {
-            res.render("campgrounds/index", {campgrounds: campgrounds});
+            res.render("campgrounds/index", {campgrounds: campgrounds, currentUser: req.user});
         }
     });
     //res.render("campgrounds",{campgrounds: campgrounds});
@@ -80,7 +83,7 @@ app.get("/campgrounds/:id", function(req, res){
     });
 });
 
-app.get("/campgrounds/:id/comments/new", function(req, res){
+app.get("/campgrounds/:id/comments/new", isLoggedIn, function(req, res){
     Campground.findById(req.params.id, function(err, campground){
         if(err) {
             console.log(err);
@@ -90,7 +93,7 @@ app.get("/campgrounds/:id/comments/new", function(req, res){
     });
 });
 
-app.post("/campgrounds/:id/comments", function(req, res){
+app.post("/campgrounds/:id/comments", isLoggedIn, function(req, res){
     Campground.findById(req.params.id, function(err, campground){
         if(err){
             console.log(err);
@@ -143,6 +146,21 @@ app.post("/login", passport.authenticate("local",
         failureRedirect: "/login"
     }), function(req, res){
 });
+
+//logout logic
+
+app.get("/logout", function(req, res){
+    req.logout();
+    res.redirect("/campgrounds");
+});
+
+function isLoggedIn(req, res, next){
+    if(req.isAuthenticated()){
+        return next();
+    } else {
+        res.redirect("/login");
+    }
+}
 
 app.listen(5000, function(){
     console.log("Yelpcamp server up....");
